@@ -1,16 +1,31 @@
-# chat_app
+# Chat Application
 
-A new Flutter project.
+A real-time chat application built with Flutter, offering seamless messaging and user-friendly features.
 
-## Getting Started
+## Features 🌟
+- **Real-Time Messaging**: Send & receive messages instantly.
+- **Online & Typing Indicators**: View user status in real-time.
+- **Last Seen & Read/Delivered Receipts**: Track user activity and message status.
+- **Block/Unblock Users**: Manage who can reach you with ease.
+- **Unread Count**: Always know how many unread messages await you.
+- **Emojis & More**: Express yourself with fun reactions.
 
-This project is a starting point for a Flutter application.
+## Tech Stack 🔥
+- **State Management**: Cubit for scalable and efficient state management.
+- **Firebase Integration**: Real-time communication with Firebase Firestore & Authentication.
+- **Authentication**: Email/Password sign-in with Firebase Auth.
+- **Clean Architecture**: Maintainable, modular codebase.
+- **Dependency Injection**: Powered by GetIt for better scalability.
+- **Error Handling**: Graceful error management for a smooth user experience.
 
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## How to Run 🔧
+1. Clone the repository.
+2. Install dependencies:
+   ```bash
+   flutter pub get
+   ```
+3. Set up Firebase project and add your `google-services.json` and `GoogleService-Info.plist`.
+4. Run the app:
+   ```bash
+   flutter run
+   ```
