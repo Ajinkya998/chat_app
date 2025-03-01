@@ -1,7 +1,11 @@
 import 'package:chat_app/core/common/custom_button.dart';
 import 'package:chat_app/core/common/custom_text_field.dart';
+import 'package:chat_app/data/services/service_locator.dart';
+import 'package:chat_app/router/app_router.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+
+import '../../../data/repositories/auth_repository.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -73,6 +77,27 @@ class _SignUpScreenState extends State<SignUpScreen> {
       return "Password must be at least 6 characters";
     }
     return null;
+  }
+
+  Future<void> handleSignUp() async {
+    FocusScope.of(context).unfocus();
+    if (_formKey.currentState?.validate() ?? false) {
+      try {
+        await getIt<AuthRepository>().signUpUser(
+          fullName: nameController.text,
+          username: userNameController.text,
+          email: emailController.text,
+          phoneNumber: phoneController.text,
+          password: passwordController.text,
+        );
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString()),
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -171,10 +196,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 ),
                 const SizedBox(height: 30),
                 CustomElevatedButton(
-                    onPressed: () {
-                      if (_formKey.currentState?.validate() ?? false) {}
-                    },
-                    text: "Create Account"),
+                    onPressed: handleSignUp, text: "Create Account"),
                 const SizedBox(height: 15),
                 Center(
                   child: RichText(
@@ -191,7 +213,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                   color: Theme.of(context).primaryColor,
                                   fontWeight: FontWeight.bold),
                           recognizer: TapGestureRecognizer()
-                            ..onTap = () => Navigator.pop(context),
+                            ..onTap = () => getIt<AppRouter>().pop(),
                         ),
                       ],
                     ),
