@@ -2,8 +2,11 @@ import 'dart:developer';
 
 import 'package:chat_app/data/models/user_model.dart';
 import 'package:chat_app/data/services/base_repository.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class AuthRepository extends BaseRepository {
+  Stream<User?> get authStateChanges => auth.authStateChanges();
+
   // Sign Up User
   Future<UserModel> signUpUser(
       {required String fullName,
@@ -12,7 +15,8 @@ class AuthRepository extends BaseRepository {
       required String phoneNumber,
       required String password}) async {
     try {
-      final formattedPhoneNumber = phoneNumber.replaceAll(RegExp(r'\s+'), "".trim());
+      final formattedPhoneNumber =
+          phoneNumber.replaceAll(RegExp(r'\s+'), "".trim());
       final userCredential = await auth.createUserWithEmailAndPassword(
           email: email, password: password);
 
@@ -52,6 +56,15 @@ class AuthRepository extends BaseRepository {
     } catch (e) {
       log(e.toString());
       rethrow;
+    }
+  }
+
+  // Sign Out User
+  Future<void> signOutUser() async {
+    try {
+      await auth.signOut();
+    } catch (e) {
+      throw "Failed to sign out user";
     }
   }
 

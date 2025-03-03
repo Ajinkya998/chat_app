@@ -64,7 +64,7 @@ class UserModel {
       isOnline: data['isOnline'],
       lastSeen: data['lastSeen'],
       createdAt: data['createdAt'],
-      blockedUsers: data['blockedUsers'],
+      blockedUsers: List<String>.from(data['blockedUsers']),
       fcmToken: data['fcmToken'],
     );
   }
