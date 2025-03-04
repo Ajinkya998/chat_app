@@ -7,6 +7,33 @@ import 'package:firebase_auth/firebase_auth.dart';
 class AuthRepository extends BaseRepository {
   Stream<User?> get authStateChanges => auth.authStateChanges();
 
+  // Check if user already exits or not
+  Future<bool> checkEmailExists(String email) async {
+    try {
+      final user = await auth.fetchSignInMethodsForEmail(email);
+      return user.isNotEmpty;
+    } catch (e) {
+      log(e.toString());
+      return false;
+    }
+  }
+
+  Future<bool> checkPhoneNumber(String phoneNumber) async {
+    try {
+      final formattedPhoneNumber =
+          phoneNumber.replaceAll(RegExp(r'\s+'), "".trim());
+
+      final querySnapShot = await firestore
+          .collection('users')
+          .where('phoneNumber', isEqualTo: formattedPhoneNumber)
+          .get();
+      return querySnapShot.docs.isNotEmpty;
+    } catch (e) {
+      log(e.toString());
+      return false;
+    }
+  }
+
   // Sign Up User
   Future<UserModel> signUpUser(
       {required String fullName,
@@ -17,6 +44,16 @@ class AuthRepository extends BaseRepository {
     try {
       final formattedPhoneNumber =
           phoneNumber.replaceAll(RegExp(r'\s+'), "".trim());
+
+      final isEmailExists = await checkEmailExists(email);
+      final isPhoneNumberExists = await checkPhoneNumber(formattedPhoneNumber);
+
+      if (isEmailExists) {
+        throw "An account with the same email already exists";
+      }
+      if (isPhoneNumberExists) {
+        throw "An account with the same phone number already exists";
+      }
       final userCredential = await auth.createUserWithEmailAndPassword(
           email: email, password: password);
 
