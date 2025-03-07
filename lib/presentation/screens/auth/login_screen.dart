@@ -4,7 +4,7 @@ import 'package:chat_app/core/common/custom_button.dart';
 import 'package:chat_app/core/common/custom_text_field.dart';
 import 'package:chat_app/data/services/service_locator.dart';
 import 'package:chat_app/logic/cubits/auth_state.dart';
-import 'package:chat_app/presentation/home/home_screen.dart';
+import 'package:chat_app/presentation/screens/home/home_screen.dart';
 import 'package:chat_app/router/app_router.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';

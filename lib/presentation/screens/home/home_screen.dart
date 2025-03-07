@@ -2,6 +2,7 @@ import 'package:chat_app/data/repositories/contact_repository.dart';
 import 'package:chat_app/data/services/service_locator.dart';
 import 'package:chat_app/logic/cubits/auth_cubit.dart';
 import 'package:chat_app/presentation/screens/auth/login_screen.dart';
+import 'package:chat_app/presentation/screens/chat/chat_screen.dart';
 import 'package:chat_app/router/app_router.dart';
 import 'package:flutter/material.dart';
 
@@ -52,7 +53,13 @@ class _HomeScreenState extends State<HomeScreen> {
                         itemBuilder: (context, index) {
                           final contact = contacts[index];
                           return ListTile(
-                            onTap: () {},
+                            onTap: () {
+                              getIt<AppRouter>().push(
+                                ChatScreen(
+                                    receiverId: contact["id"],
+                                    receiverName: contact["name"]),
+                              );
+                            },
                             leading: CircleAvatar(
                               backgroundColor: Theme.of(context)
                                   .primaryColor
