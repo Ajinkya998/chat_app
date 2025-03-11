@@ -24,6 +24,7 @@ Future<void> setupServiceLocator() async {
   getIt.registerLazySingleton(() => AppRouter());
   getIt.registerLazySingleton(() => AuthRepository());
   getIt.registerLazySingleton(() => ContactRepository());
+  getIt.registerLazySingleton(() => ChatRepository());
   getIt
       .registerLazySingleton(() => AuthCubit(authRepository: AuthRepository()));
   getIt.registerLazySingleton(() => ChatCubit(

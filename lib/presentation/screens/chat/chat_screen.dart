@@ -1,8 +1,9 @@
 import 'package:chat_app/data/models/chat_message_model.dart';
 import 'package:chat_app/data/services/service_locator.dart';
 import 'package:chat_app/logic/cubits/chat/chat_cubit.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:chat_app/logic/cubits/chat/chat_state.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 class ChatScreen extends StatefulWidget {
   final String receiverId;
@@ -61,65 +62,69 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: 4,
-              itemBuilder: (context, index) {
-                return MessageBubble(
-                    message: ChatMessageModel(
-                      id: "465",
-                      chatRoomId: "45645",
-                      senderId: "46546",
-                      receiverId: "4665",
-                      content: "Hello is my first Message",
-                      timestamp: Timestamp.now(),
-                      readBy: [],
-                    ),
-                    isMe: false);
-              },
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(8),
-            child: Column(
-              children: [
-                Row(
+      body: BlocBuilder<ChatCubit, ChatState>(
+        bloc: _chatCubit,
+        builder: (context, state) {
+          if (state.status == ChatStatus.loading) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (state.status == ChatStatus.error) {
+            return Center(child: Text(state.error ?? "Something went wrong"));
+          }
+          return Column(
+            children: [
+              Expanded(
+                child: ListView.builder(
+                  reverse: true,
+                  shrinkWrap: true,
+                  itemCount: state.messages.length,
+                  itemBuilder: (context, index) {
+                    final message = state.messages[index];
+                    final isMe = message.senderId == _chatCubit.currentUserId;
+                    return MessageBubble(message: message, isMe: isMe);
+                  },
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(8),
+                child: Column(
                   children: [
-                    IconButton(
-                      onPressed: () {},
-                      icon: const Icon(Icons.emoji_emotions),
-                    ),
-                    Expanded(
-                      child: TextField(
-                        controller: messageController,
-                        textCapitalization: TextCapitalization.sentences,
-                        keyboardType: TextInputType.multiline,
-                        decoration: InputDecoration(
-                          hintText: "Type a message",
-                          filled: true,
-                          fillColor: Theme.of(context).cardColor,
-                          contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 8),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(24),
-                            borderSide: BorderSide.none,
+                    Row(
+                      children: [
+                        IconButton(
+                          onPressed: () {},
+                          icon: const Icon(Icons.emoji_emotions),
+                        ),
+                        Expanded(
+                          child: TextField(
+                            controller: messageController,
+                            textCapitalization: TextCapitalization.sentences,
+                            keyboardType: TextInputType.multiline,
+                            decoration: InputDecoration(
+                              hintText: "Type a message",
+                              filled: true,
+                              fillColor: Theme.of(context).cardColor,
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 8),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(24),
+                                borderSide: BorderSide.none,
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: _handleSendMessage,
-                      icon: const Icon(Icons.send),
+                        IconButton(
+                          onPressed: _handleSendMessage,
+                          icon: const Icon(Icons.send),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
-            ),
-          ),
-        ],
+              ),
+            ],
+          );
+        },
       ),
     );
   }

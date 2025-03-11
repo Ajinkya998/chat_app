@@ -74,4 +74,53 @@ class ChatRepository extends BaseRepository {
     });
     await batch.commit();
   }
+
+  Stream<List<ChatMessageModel>> getMessages(String chatRoomId,
+      {DocumentSnapshot? lastDocument}) {
+    var query = getChatRoomMessages(chatRoomId)
+        .orderBy('timestamp', descending: true)
+        .limit(20);
+    if (lastDocument != null) {
+      query = query.startAfterDocument(lastDocument);
+    }
+    return query.snapshots().map(
+          (snapshot) => snapshot.docs
+              .map((doc) => ChatMessageModel.fromFirestore(doc))
+              .toList(),
+        );
+  }
+
+  Future<List<ChatMessageModel>> loadMoreMessages(String chatRoomId,
+      {required DocumentSnapshot lastDocument}) async {
+    final query = getChatRoomMessages(chatRoomId)
+        .orderBy('timestamp', descending: true)
+        .startAfterDocument(lastDocument)
+        .limit(20);
+
+    final snapshot = await query.get();
+
+    return snapshot.docs
+        .map((doc) => ChatMessageModel.fromFirestore(doc))
+        .toList();
+  }
+
+  Stream<List<ChatRoomModel>> getChatRooms(String userId) {
+    return _chatRooms
+        .where("participants", arrayContains: userId)
+        .orderBy('lastMessageTime', descending: true)
+        .snapshots()
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => ChatRoomModel.fromFirestore(doc))
+              .toList(),
+        );
+  }
+
+  Stream<int> getUnreadCount(String chatRoomId, String userId) {
+    return getChatRoomMessages(chatRoomId)
+        .where("receiverId", isEqualTo: userId)
+        .where('status', isEqualTo: MessageStatus.sent.toString())
+        .snapshots()
+        .map((snapshot) => snapshot.docs.length);
+  }
 }

@@ -1,8 +1,12 @@
+import 'dart:developer';
+
+import 'package:chat_app/data/repositories/chat_repository.dart';
 import 'package:chat_app/data/repositories/contact_repository.dart';
 import 'package:chat_app/data/services/service_locator.dart';
 import 'package:chat_app/logic/cubits/auth/auth_cubit.dart';
 import 'package:chat_app/presentation/screens/auth/login_screen.dart';
 import 'package:chat_app/presentation/screens/chat/chat_screen.dart';
+import 'package:chat_app/presentation/widgets/chat_list_tile.dart';
 import 'package:chat_app/router/app_router.dart';
 import 'package:flutter/material.dart';
 
@@ -15,10 +19,14 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   late final ContactRepository _contactRepository;
+  late final ChatRepository _chatRepository;
+  late String _currentUserId;
 
   @override
   void initState() {
     _contactRepository = getIt<ContactRepository>();
+    _chatRepository = getIt<ChatRepository>();
+    _currentUserId = getIt<AuthCubit>().state.user?.uid ?? "";
     super.initState();
   }
 
@@ -39,6 +47,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     future: _contactRepository.getRegisteredContacts(),
                     builder: (context, snapshot) {
                       if (snapshot.hasError) {
+                        log("Error: ${snapshot.error}");
                         return Center(child: Text("Error: ${snapshot.error}"));
                       }
                       if (!snapshot.hasData) {
@@ -93,8 +102,37 @@ class _HomeScreenState extends State<HomeScreen> {
               icon: const Icon(Icons.logout))
         ],
       ),
-      body: const Center(
-        child: Text("User is Authenticated"),
+      body: StreamBuilder(
+        stream: _chatRepository.getChatRooms(_currentUserId),
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(child: Text("Error: ${snapshot.error}"));
+          }
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final chats = snapshot.data!;
+          if (chats.isEmpty) {
+            return const Center(child: Text("No Chats Found"));
+          }
+          return ListView.builder(
+            itemCount: chats.length,
+            itemBuilder: (context, index) {
+              final chat = chats[index];
+              return ChatListTile(
+                  chat: chat,
+                  currentUserId: _currentUserId,
+                  onTap: () {
+                    final otherUserId = chat.participants
+                        .firstWhere((id) => id != _currentUserId);
+                    final otherUserName =
+                        chat.participantsName?[otherUserId] ?? "Unknown";
+                    getIt<AppRouter>().push(ChatScreen(
+                        receiverId: otherUserId, receiverName: otherUserName));
+                  });
+            },
+          );
+        },
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showContactList(context),

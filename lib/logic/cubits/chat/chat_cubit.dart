@@ -1,4 +1,6 @@
 // ignore_for_file: public_member_api_docs, sort_constructors_first
+import 'dart:async';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:chat_app/data/repositories/chat_repository.dart';
@@ -7,6 +9,7 @@ import 'package:chat_app/logic/cubits/chat/chat_state.dart';
 class ChatCubit extends Cubit<ChatState> {
   final ChatRepository _chatRepository;
   final String currentUserId;
+  StreamSubscription? _messageSubscription;
   ChatCubit({
     required ChatRepository chatRepository,
     required this.currentUserId,
@@ -23,6 +26,7 @@ class ChatCubit extends Cubit<ChatState> {
         chatRoomId: chatRoom.id,
         status: ChatStatus.loaded,
       ));
+      _subscribeToMessage(chatRoom.id);
     } catch (e) {
       emit(state.copyWith(
           status: ChatStatus.error, error: "Failed to create a chat room: $e"));
@@ -43,5 +47,16 @@ class ChatCubit extends Cubit<ChatState> {
       emit(state.copyWith(
           status: ChatStatus.error, error: "Failed to send message"));
     }
+  }
+
+  void _subscribeToMessage(String chatRoomId) {
+    _messageSubscription?.cancel();
+    _messageSubscription =
+        _chatRepository.getMessages(chatRoomId).listen((messages) {
+      emit(state.copyWith(messages: messages, error: null));
+    }, onError: (e) {
+      emit(state.copyWith(
+          error: "Failed to get messages: $e", status: ChatStatus.error));
+    });
   }
 }
