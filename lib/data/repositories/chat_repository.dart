@@ -123,4 +123,25 @@ class ChatRepository extends BaseRepository {
         .snapshots()
         .map((snapshot) => snapshot.docs.length);
   }
+
+  Future<void> markMessagesAsRead(String chatRoomId, String userId) async {
+    try {
+      final batch = firestore.batch();
+
+      final unreadMessages = await getChatRoomMessages(chatRoomId)
+          .where('receiverId', isEqualTo: userId)
+          .where('status', isEqualTo: MessageStatus.sent.toString())
+          .get();
+
+      for (final doc in unreadMessages.docs) {
+        batch.update(doc.reference, {
+          'status': MessageStatus.read.toString(),
+          'readBy': FieldValue.arrayUnion([userId])
+        });
+      }
+      await batch.commit();
+    } catch (e) {
+      throw "Error marking messages as read: $e";
+    }
+  }
 }

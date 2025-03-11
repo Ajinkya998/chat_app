@@ -4,6 +4,7 @@ import 'package:chat_app/logic/cubits/chat/chat_cubit.dart';
 import 'package:chat_app/logic/cubits/chat/chat_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
 
 class ChatScreen extends StatefulWidget {
   final String receiverId;
@@ -32,6 +33,13 @@ class _ChatScreenState extends State<ChatScreen> {
     messageController.clear();
 
     _chatCubit.sendMessage(content: messageText, receiverId: widget.receiverId);
+  }
+
+  @override
+  void dispose() {
+    messageController.dispose();
+    _chatCubit.leaveChat();
+    super.dispose();
   }
 
   @override
@@ -162,14 +170,15 @@ class MessageBubble extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  "9:44 AM",
+                  DateFormat('hh:mm a').format(message.timestamp.toDate()),
                   style: TextStyle(color: isMe ? Colors.white : Colors.black),
                 ),
                 const SizedBox(width: 4),
-                Icon(Icons.done_all,
-                    color: message.status == MessageStatus.read
-                        ? Colors.red
-                        : Colors.white70),
+                if (isMe)
+                  Icon(Icons.done_all,
+                      color: message.status == MessageStatus.read
+                          ? Colors.red
+                          : Colors.white70),
               ],
             ),
           ],

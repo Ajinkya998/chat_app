@@ -1,5 +1,6 @@
 // ignore_for_file: public_member_api_docs, sort_constructors_first
 import 'dart:async';
+import 'dart:developer';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -10,6 +11,7 @@ class ChatCubit extends Cubit<ChatState> {
   final ChatRepository _chatRepository;
   final String currentUserId;
   StreamSubscription? _messageSubscription;
+  bool _isInChat = false;
   ChatCubit({
     required ChatRepository chatRepository,
     required this.currentUserId,
@@ -17,6 +19,7 @@ class ChatCubit extends Cubit<ChatState> {
         super(const ChatState());
 
   void enterChat(String receiverId) async {
+    _isInChat = true;
     emit(state.copyWith(status: ChatStatus.loading));
     try {
       final chatRoom =
@@ -53,10 +56,25 @@ class ChatCubit extends Cubit<ChatState> {
     _messageSubscription?.cancel();
     _messageSubscription =
         _chatRepository.getMessages(chatRoomId).listen((messages) {
+      if (_isInChat) {
+        _markMessagesAsRead(chatRoomId);
+      }
       emit(state.copyWith(messages: messages, error: null));
     }, onError: (e) {
       emit(state.copyWith(
           error: "Failed to get messages: $e", status: ChatStatus.error));
     });
+  }
+
+  Future<void> _markMessagesAsRead(String chatRoomId) async {
+    try {
+      await _chatRepository.markMessagesAsRead(chatRoomId, currentUserId);
+    } catch (e) {
+      log("Error marking messages as read: $e");
+    }
+  }
+
+  Future<void> leaveChat() async {
+  _isInChat = false;
   }
 }
