@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:chat_app/data/repositories/auth_repository.dart';
-import 'package:chat_app/logic/cubits/auth_state.dart';
+import 'package:chat_app/logic/cubits/auth/auth_state.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 

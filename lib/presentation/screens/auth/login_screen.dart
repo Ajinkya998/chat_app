@@ -3,7 +3,7 @@ import 'dart:developer';
 import 'package:chat_app/core/common/custom_button.dart';
 import 'package:chat_app/core/common/custom_text_field.dart';
 import 'package:chat_app/data/services/service_locator.dart';
-import 'package:chat_app/logic/cubits/auth_state.dart';
+import 'package:chat_app/logic/cubits/auth/auth_state.dart';
 import 'package:chat_app/presentation/screens/home/home_screen.dart';
 import 'package:chat_app/router/app_router.dart';
 import 'package:flutter/gestures.dart';
@@ -11,7 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/utils/ui_utils.dart';
-import '../../../logic/cubits/auth_cubit.dart';
+import '../../../logic/cubits/auth/auth_cubit.dart';
 import 'sign_up_screen.dart';
 
 class LoginScreen extends StatefulWidget {

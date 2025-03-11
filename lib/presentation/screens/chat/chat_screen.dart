@@ -1,4 +1,6 @@
 import 'package:chat_app/data/models/chat_message_model.dart';
+import 'package:chat_app/data/services/service_locator.dart';
+import 'package:chat_app/logic/cubits/chat/chat_cubit.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
@@ -14,6 +16,23 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController messageController = TextEditingController();
+
+  late final ChatCubit _chatCubit;
+
+  @override
+  void initState() {
+    _chatCubit = getIt<ChatCubit>();
+    _chatCubit.enterChat(widget.receiverId);
+    super.initState();
+  }
+
+  void _handleSendMessage() {
+    final messageText = messageController.text.trim();
+    messageController.clear();
+
+    _chatCubit.sendMessage(content: messageText, receiverId: widget.receiverId);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -92,7 +111,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       ),
                     ),
                     IconButton(
-                      onPressed: () {},
+                      onPressed: _handleSendMessage,
                       icon: const Icon(Icons.send),
                     ),
                   ],
