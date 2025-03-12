@@ -2,6 +2,7 @@
 import 'dart:async';
 import 'dart:developer';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:chat_app/data/repositories/chat_repository.dart';
@@ -11,7 +12,10 @@ class ChatCubit extends Cubit<ChatState> {
   final ChatRepository _chatRepository;
   final String currentUserId;
   StreamSubscription? _messageSubscription;
+  StreamSubscription? _onlineStatusSubscription;
+  StreamSubscription? _typingSubscription;
   bool _isInChat = false;
+  Timer? typingTimer;
   ChatCubit({
     required ChatRepository chatRepository,
     required this.currentUserId,
@@ -30,6 +34,10 @@ class ChatCubit extends Cubit<ChatState> {
         status: ChatStatus.loaded,
       ));
       _subscribeToMessage(chatRoom.id);
+      _subscribeToOnlineStatus(receiverId);
+      _subscribeToTypingStatus(chatRoom.id);
+
+      _chatRepository.updateOnlineStatus(currentUserId, true);
     } catch (e) {
       emit(state.copyWith(
           status: ChatStatus.error, error: "Failed to create a chat room: $e"));
@@ -74,7 +82,58 @@ class ChatCubit extends Cubit<ChatState> {
     }
   }
 
+  void _subscribeToOnlineStatus(String userId) {
+    _onlineStatusSubscription?.cancel();
+    _onlineStatusSubscription =
+        _chatRepository.getUserOnlineStatus(userId).listen((status) {
+      final isOnline = status["isOnline"] as bool;
+      final lastSeen = status["lastSeen"] as Timestamp?;
+
+      emit(state.copyWith(
+        isReceiverOnline: isOnline,
+        receiverLastSeen: lastSeen,
+      ));
+    }, onError: (error) {
+      print("Error getting online status: $error");
+    });
+  }
+
+  void _subscribeToTypingStatus(String chatRoomId) {
+    _typingSubscription?.cancel();
+    _typingSubscription =
+        _chatRepository.getUserTyingStatus(chatRoomId).listen((status) {
+      final isTyping = status["isTyping"] as bool;
+      final typingUserId = status["typingUserId"] as String?;
+
+      emit(state.copyWith(
+        isReceiverTyping: isTyping && typingUserId != currentUserId,
+      ));
+    }, onError: (error) {
+      print("Error getting typing status: $error");
+    });
+  }
+
+  void startTyping() {
+    if (state.chatRoomId == null) return;
+    typingTimer?.cancel();
+    _updateTypingStatus(true);
+    typingTimer = Timer(const Duration(seconds: 3), () {
+      _updateTypingStatus(false);
+    });
+  }
+
+  Future<void> _updateTypingStatus(bool isTyping) async {
+    if (state.chatRoomId == null) return;
+
+    try {
+      await _chatRepository.updateTypingStaus(
+          state.chatRoomId!, currentUserId, isTyping);
+    } catch (e) {
+      print("Error updating typing status: $e");
+    }
+  }
+
   Future<void> leaveChat() async {
-  _isInChat = false;
+    _isInChat = false;
   }
 }

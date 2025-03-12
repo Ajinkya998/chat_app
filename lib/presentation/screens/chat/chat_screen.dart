@@ -2,6 +2,7 @@ import 'package:chat_app/data/models/chat_message_model.dart';
 import 'package:chat_app/data/services/service_locator.dart';
 import 'package:chat_app/logic/cubits/chat/chat_cubit.dart';
 import 'package:chat_app/logic/cubits/chat/chat_state.dart';
+import 'package:chat_app/presentation/widgets/loading_dots.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
@@ -20,11 +21,13 @@ class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController messageController = TextEditingController();
 
   late final ChatCubit _chatCubit;
+  bool _isComposing = false;
 
   @override
   void initState() {
     _chatCubit = getIt<ChatCubit>();
     _chatCubit.enterChat(widget.receiverId);
+    messageController.addListener(_onTextChanged);
     super.initState();
   }
 
@@ -33,6 +36,18 @@ class _ChatScreenState extends State<ChatScreen> {
     messageController.clear();
 
     _chatCubit.sendMessage(content: messageText, receiverId: widget.receiverId);
+  }
+
+  void _onTextChanged() {
+    final isComposing = messageController.text.isNotEmpty;
+    if (isComposing != _isComposing) {
+      setState(() {
+        _isComposing = isComposing;
+      });
+    }
+    if (isComposing) {
+      _chatCubit.startTyping();
+    }
   }
 
   @override
@@ -57,8 +72,47 @@ class _ChatScreenState extends State<ChatScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(widget.receiverName),
-                const Text("Online",
-                    style: TextStyle(color: Colors.green, fontSize: 12)),
+                BlocBuilder<ChatCubit, ChatState>(
+                  bloc: _chatCubit,
+                  builder: (context, state) {
+                    if (state.isReceiverTyping) {
+                      return Row(
+                        children: [
+                          Container(
+                            margin: const EdgeInsets.only(right: 4),
+                            child: const LoadingDots(),
+                          ),
+                          Text(
+                            "Typing",
+                            style: TextStyle(
+                              color: Theme.of(context).primaryColor,
+                              fontSize: 12,
+                            ),
+                          )
+                        ],
+                      );
+                    }
+                    if (state.isReceiverOnline) {
+                      return const Text(
+                        "Online",
+                        style: TextStyle(
+                          color: Colors.green,
+                          fontSize: 12,
+                        ),
+                      );
+                    }
+                    if (state.receiverLastSeen != null) {
+                      return Text(
+                        "Last seen ${DateFormat('hh:mm a').format(state.receiverLastSeen!.toDate())}",
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 12,
+                        ),
+                      );
+                    }
+                    return const SizedBox();
+                  },
+                )
               ],
             ),
           ],
@@ -176,6 +230,7 @@ class MessageBubble extends StatelessWidget {
                 const SizedBox(width: 4),
                 if (isMe)
                   Icon(Icons.done_all,
+                      size: 14,
                       color: message.status == MessageStatus.read
                           ? Colors.red
                           : Colors.white70),
