@@ -1,8 +1,11 @@
+import 'dart:io';
+
 import 'package:chat_app/data/models/chat_message_model.dart';
 import 'package:chat_app/data/services/service_locator.dart';
 import 'package:chat_app/logic/cubits/chat/chat_cubit.dart';
 import 'package:chat_app/logic/cubits/chat/chat_state.dart';
 import 'package:chat_app/presentation/widgets/loading_dots.dart';
+import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
@@ -21,13 +24,17 @@ class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController messageController = TextEditingController();
 
   late final ChatCubit _chatCubit;
+  final _scrollController = ScrollController();
+  List<ChatMessageModel> _previousMessages = [];
   bool _isComposing = false;
+  bool _showEmojis = false;
 
   @override
   void initState() {
     _chatCubit = getIt<ChatCubit>();
     _chatCubit.enterChat(widget.receiverId);
     messageController.addListener(_onTextChanged);
+    _scrollController.addListener(_onScroll);
     super.initState();
   }
 
@@ -36,6 +43,30 @@ class _ChatScreenState extends State<ChatScreen> {
     messageController.clear();
 
     _chatCubit.sendMessage(content: messageText, receiverId: widget.receiverId);
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      _chatCubit.loadMoreMessages();
+    }
+  }
+
+  void _scrollToBottom() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
+  void _hasNewMessages(List<ChatMessageModel> messages) {
+    if (messages.length != _previousMessages.length) {
+      _scrollToBottom();
+      _previousMessages = messages;
+    }
   }
 
   void _onTextChanged() {
@@ -72,7 +103,10 @@ class _ChatScreenState extends State<ChatScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(widget.receiverName),
-                BlocBuilder<ChatCubit, ChatState>(
+                BlocConsumer<ChatCubit, ChatState>(
+                  listener: (context, state) {
+                    _hasNewMessages(state.messages);
+                  },
                   bloc: _chatCubit,
                   builder: (context, state) {
                     if (state.isReceiverTyping) {
@@ -118,9 +152,55 @@ class _ChatScreenState extends State<ChatScreen> {
           ],
         ),
         actions: [
-          IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.more_vert),
+          BlocBuilder<ChatCubit, ChatState>(
+            bloc: _chatCubit,
+            builder: (context, state) {
+              if (state.isUserBlocked) {
+                return TextButton.icon(
+                  onPressed: () => _chatCubit.unBlockUser(widget.receiverId),
+                  label: const Text("Unblock"),
+                  icon: const Icon(Icons.block),
+                );
+              }
+              return PopupMenuButton<String>(
+                icon: const Icon(Icons.more_vert),
+                onSelected: (value) async {
+                  if (value == "block") {
+                    final bool? isConfirm = await showDialog(
+                      context: context,
+                      builder: (context) {
+                        return AlertDialog(
+                          title: const Text("Block User"),
+                          content: Text(
+                              "Are you sure you want to block ${widget.receiverName}?"),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, false),
+                              child: const Text("Cancel"),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, true),
+                              child: const Text("Block",
+                                  style: TextStyle(color: Colors.red)),
+                            ),
+                          ],
+                        );
+                      },
+                    );
+
+                    if (isConfirm == true) {
+                      await _chatCubit.blockUser(widget.receiverId);
+                    }
+                  }
+                },
+                itemBuilder: (context) => <PopupMenuEntry<String>>[
+                  const PopupMenuItem(
+                    value: "block",
+                    child: Text("Block User"),
+                  )
+                ],
+              );
+            },
           ),
         ],
       ),
@@ -135,8 +215,19 @@ class _ChatScreenState extends State<ChatScreen> {
           }
           return Column(
             children: [
+              if (state.amIBlocked)
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  color: Colors.red.withOpacity(0.1),
+                  child: Text(
+                    "You are blocked by ${widget.receiverName}",
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.red),
+                  ),
+                ),
               Expanded(
                 child: ListView.builder(
+                  controller: _scrollController,
                   reverse: true,
                   shrinkWrap: true,
                   itemCount: state.messages.length,
@@ -147,43 +238,109 @@ class _ChatScreenState extends State<ChatScreen> {
                   },
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.all(8),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        IconButton(
-                          onPressed: () {},
-                          icon: const Icon(Icons.emoji_emotions),
-                        ),
-                        Expanded(
-                          child: TextField(
-                            controller: messageController,
-                            textCapitalization: TextCapitalization.sentences,
-                            keyboardType: TextInputType.multiline,
-                            decoration: InputDecoration(
-                              hintText: "Type a message",
-                              filled: true,
-                              fillColor: Theme.of(context).cardColor,
-                              contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 8),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(24),
-                                borderSide: BorderSide.none,
+              if (!state.amIBlocked && !state.isUserBlocked)
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          IconButton(
+                            onPressed: () {
+                              setState(() {
+                                _showEmojis = !_showEmojis;
+                              });
+                            },
+                            icon: const Icon(Icons.emoji_emotions),
+                          ),
+                          Expanded(
+                            child: TextField(
+                              onTap: () {
+                                if (_showEmojis) {
+                                  setState(() {
+                                    _showEmojis = false;
+                                  });
+                                }
+                              },
+                              controller: messageController,
+                              textCapitalization: TextCapitalization.sentences,
+                              keyboardType: TextInputType.multiline,
+                              decoration: InputDecoration(
+                                hintText: "Type a message",
+                                filled: true,
+                                fillColor: Theme.of(context).cardColor,
+                                contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 8),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(24),
+                                  borderSide: BorderSide.none,
+                                ),
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: _isComposing ? _handleSendMessage : null,
+                            icon: Icon(Icons.send,
+                                color: _isComposing
+                                    ? Theme.of(context).primaryColor
+                                    : Colors.grey),
+                          ),
+                        ],
+                      ),
+                      if (_showEmojis)
+                        SizedBox(
+                          height: 250,
+                          child: EmojiPicker(
+                            textEditingController: messageController,
+                            onEmojiSelected: (category, emoji) {
+                              messageController
+                                ..text += emoji.emoji
+                                ..selection = TextSelection.fromPosition(
+                                  TextPosition(
+                                    offset: messageController.text.length,
+                                  ),
+                                );
+                              setState(() {
+                                _isComposing =
+                                    messageController.text.isNotEmpty;
+                              });
+                            },
+                            config: Config(
+                              height: 250,
+                              emojiViewConfig: EmojiViewConfig(
+                                columns: 7,
+                                emojiSizeMax:
+                                    32.0 * (Platform.isIOS ? 1.30 : 1.0),
+                                verticalSpacing: 0,
+                                horizontalSpacing: 0,
+                                gridPadding: EdgeInsets.zero,
+                                loadingIndicator: const SizedBox.shrink(),
+                              ),
+                              categoryViewConfig: const CategoryViewConfig(
+                                initCategory: Category.RECENT,
+                              ),
+                              bottomActionBarConfig: BottomActionBarConfig(
+                                enabled: true,
+                                backgroundColor:
+                                    Theme.of(context).scaffoldBackgroundColor,
+                                buttonColor: Theme.of(context).primaryColor,
+                              ),
+                              skinToneConfig: const SkinToneConfig(
+                                enabled: true,
+                                dialogBackgroundColor: Colors.white,
+                                indicatorColor: Colors.grey,
+                              ),
+                              searchViewConfig: SearchViewConfig(
+                                backgroundColor:
+                                    Theme.of(context).scaffoldBackgroundColor,
+                                buttonIconColor: Theme.of(context).primaryColor,
                               ),
                             ),
                           ),
                         ),
-                        IconButton(
-                          onPressed: _handleSendMessage,
-                          icon: const Icon(Icons.send),
-                        ),
-                      ],
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
             ],
           );
         },
